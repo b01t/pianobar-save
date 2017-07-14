@@ -23,10 +23,13 @@ THE SOFTWARE.
 
 /* functions responding to user's keystrokes */
 
+#include "config.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <assert.h>
+#include <string.h>
 
 #include "ui.h"
 #include "ui_readline.h"
@@ -63,7 +66,7 @@ static inline void BarUiDoSkipSong (player_t * const player) {
  */
 static int BarTransformIfShared (BarApp_t *app, PianoStation_t *station) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 
 	assert (station != NULL);
 
@@ -96,7 +99,7 @@ BarUiActCallback(BarUiActHelp) {
  */
 BarUiActCallback(BarUiActAddMusic) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataAddSeed_t reqData;
 
 	assert (selStation != NULL);
@@ -122,7 +125,7 @@ BarUiActCallback(BarUiActAddMusic) {
  */
 BarUiActCallback(BarUiActBanSong) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoStation_t *realStation;
 
 	assert (selStation != NULL);
@@ -154,7 +157,7 @@ BarUiActCallback(BarUiActBanSong) {
  */
 BarUiActCallback(BarUiActCreateStation) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataCreateStation_t reqData;
 
 	reqData.type = PIANO_MUSICTYPE_INVALID;
@@ -172,7 +175,7 @@ BarUiActCallback(BarUiActCreateStation) {
  */
 BarUiActCallback(BarUiActCreateStationFromSong) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataCreateStation_t reqData;
 	char selectBuf[2];
 
@@ -202,7 +205,7 @@ BarUiActCallback(BarUiActCreateStationFromSong) {
  */
 BarUiActCallback(BarUiActAddSharedStation) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	char stationId[50];
 	PianoRequestDataCreateStation_t reqData;
 
@@ -222,7 +225,7 @@ BarUiActCallback(BarUiActAddSharedStation) {
  */
 BarUiActCallback(BarUiActDeleteStation) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 
 	assert (selStation != NULL);
 
@@ -233,11 +236,17 @@ BarUiActCallback(BarUiActDeleteStation) {
 		if (BarUiActDefaultPianoCall (PIANO_REQUEST_DELETE_STATION,
 				selStation) && selStation == app->curStation) {
 			BarUiDoSkipSong (&app->player);
-			PianoDestroyPlaylist (PianoListNextP (app->playlist));
-			app->playlist->head.next = NULL;
-			BarUiHistoryPrepend (app, app->playlist);
-			app->playlist = NULL;
+			if (app->playlist != NULL) {
+				/* drain playlist */
+				PianoDestroyPlaylist (PianoListNextP (app->playlist));
+				app->playlist->head.next = NULL;
+				selSong = NULL;
+			}
+			app->nextStation = NULL;
+			/* XXX: usually we shoudn’t touch cur*, but DELETE_STATION destroys
+			 * station struct */
 			app->curStation = NULL;
+			selStation = NULL;
 		}
 		BarUiActDefaultEventcmd ("stationdelete");
 	}
@@ -247,7 +256,7 @@ BarUiActCallback(BarUiActDeleteStation) {
  */
 BarUiActCallback(BarUiActExplain) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataExplain_t reqData;
 
 	assert (selSong != NULL);
@@ -266,7 +275,7 @@ BarUiActCallback(BarUiActExplain) {
  */
 BarUiActCallback(BarUiActStationFromGenre) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	const PianoGenreCategory_t *curCat;
 	const PianoGenre_t *curGenre;
 	int i;
@@ -376,7 +385,7 @@ BarUiActCallback(BarUiActDebug) {
  */
 BarUiActCallback(BarUiActLoveSong) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoStation_t *realStation;
 
 	assert (selStation != NULL);
@@ -438,7 +447,7 @@ BarUiActCallback(BarUiActTogglePause) {
  */
 BarUiActCallback(BarUiActRenameStation) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	char lineBuf[100];
 
 	assert (selStation != NULL);
@@ -465,14 +474,12 @@ BarUiActCallback(BarUiActSelectStation) {
 	PianoStation_t *newStation = BarUiSelectStation (app, app->ph.stations,
 			"Select station: ", NULL, app->settings.autoselect);
 	if (newStation != NULL) {
-		app->curStation = newStation;
-		BarUiPrintStation (&app->settings, app->curStation);
+		app->nextStation = newStation;
 		BarUiDoSkipSong (&app->player);
 		if (app->playlist != NULL) {
+			/* drain playlist */
 			PianoDestroyPlaylist (PianoListNextP (app->playlist));
 			app->playlist->head.next = NULL;
-			BarUiHistoryPrepend (app, app->playlist);
-			app->playlist = NULL;
 		}
 	}
 }
@@ -481,7 +488,7 @@ BarUiActCallback(BarUiActSelectStation) {
  */
 BarUiActCallback(BarUiActTempBanSong) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 
 	assert (selSong != NULL);
 
@@ -496,9 +503,7 @@ BarUiActCallback(BarUiActTempBanSong) {
 /*	print upcoming songs
  */
 BarUiActCallback(BarUiActPrintUpcoming) {
-	assert (selSong != NULL);
-
-	PianoSong_t *nextSong = PianoListNextP (selSong);
+	PianoSong_t * const nextSong = PianoListNextP (selSong);
 	if (nextSong != NULL) {
 		BarUiListSongs (&app->settings, nextSong, NULL);
 	} else {
@@ -549,7 +554,7 @@ static void BarUiActQuickmixCallback (BarApp_t *app, char *buf) {
  */
 BarUiActCallback(BarUiActSelectQuickMix) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 
 	assert (selStation != NULL);
 
@@ -618,7 +623,7 @@ BarUiActCallback(BarUiActHistory) {
  */
 BarUiActCallback(BarUiActBookmark) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	char selectBuf[2];
 
 	assert (selSong != NULL);
@@ -658,11 +663,111 @@ BarUiActCallback(BarUiActVolReset) {
 	BarPlayerSetVolume (&app->player);
 }
 
+static const char *boolToYesNo (const bool value) {
+	return value ? "yes" : "no";
+}
+
+/*	change pandora settings
+ */
+BarUiActCallback(BarUiActSettings) {
+	PianoReturn_t pRet;
+	CURLcode wRet;
+	PianoSettings_t settings;
+	PianoRequestDataChangeSettings_t reqData;
+	bool modified = false;
+
+	memset (&settings, 0, sizeof (settings));
+	memset (&reqData, 0, sizeof (reqData));
+
+	BarUiMsg (&app->settings, MSG_INFO, "Retrieving settings... ");
+	bool bret = BarUiActDefaultPianoCall (PIANO_REQUEST_GET_SETTINGS, &settings);
+	BarUiActDefaultEventcmd ("settingsget");
+	if (!bret) {
+		return;
+	}
+
+	BarUiMsg (&app->settings, MSG_LIST, " 0) Username (%s)\n", settings.username);
+	BarUiMsg (&app->settings, MSG_LIST, " 1) Password (*****)\n");
+	BarUiMsg (&app->settings, MSG_LIST, " 2) Explicit content filter (%s)\n",
+			boolToYesNo (settings.explicitContentFilter));
+
+	while (true) {
+		int val;
+
+		BarUiMsg (&app->settings, MSG_QUESTION, "Change setting: ");
+		if (BarReadlineInt (&val, &app->input) == 0) {
+			break;
+		}
+
+		switch (val) {
+			case 0: {
+				/* username */
+				char buf[80];
+				BarUiMsg (&app->settings, MSG_QUESTION, "New username: ");
+				if (BarReadlineStr (buf, sizeof (buf), &app->input,
+						BAR_RL_DEFAULT) > 0) {
+					reqData.newUsername = strdup (buf);
+					modified = true;
+				}
+				break;
+			}
+
+			case 1: {
+				/* password */
+				char buf[80];
+				BarUiMsg (&app->settings, MSG_QUESTION, "New password: ");
+				if (BarReadlineStr (buf, sizeof (buf), &app->input,
+						BAR_RL_NOECHO) > 0) {
+					reqData.newPassword = strdup (buf);
+					modified = true;
+				}
+				/* write missing newline */
+				puts ("");
+				break;
+			}
+
+			case 2: {
+				/* explicit content filter */
+				BarUiMsg (&app->settings, MSG_QUESTION,
+						"Enable explicit content filter? [yn] ");
+				reqData.explicitContentFilter =
+						BarReadlineYesNo (settings.explicitContentFilter,
+						&app->input) ? PIANO_TRUE : PIANO_FALSE;
+				modified = true;
+				break;
+			}
+
+			default:
+				/* continue */
+				break;
+		}
+	}
+
+	if (modified) {
+		reqData.currentUsername = app->settings.username;
+		reqData.currentPassword = app->settings.password;
+		BarUiMsg (&app->settings, MSG_INFO, "Changing settings... ");
+		BarUiActDefaultPianoCall (PIANO_REQUEST_CHANGE_SETTINGS, &reqData);
+		BarUiActDefaultEventcmd ("settingschange");
+		/* we want to be able to change settings after a username/password
+		 * change, so update our internal structs too. the user will have to
+		 * update his config file by himself though */
+		if (reqData.newUsername != NULL) {
+			free (app->settings.username);
+			app->settings.username = reqData.newUsername;
+		}
+		if (reqData.newPassword != NULL) {
+			free (app->settings.password);
+			app->settings.password = reqData.newPassword;
+		}
+	}
+}
+
 /*	manage station (remove seeds or feedback)
  */
 BarUiActCallback(BarUiActManageStation) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataGetStationInfo_t reqData;
 	char selectBuf[2], allowedActions[6], *allowedPos = allowedActions;
 	char question[64];

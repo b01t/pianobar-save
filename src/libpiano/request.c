@@ -21,17 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef __FreeBSD__
-#define _BSD_SOURCE /* required by strdup() */
-#define _DARWIN_C_SOURCE /* strdup() on OS X */
-#endif
+#include "../config.h"
 
+#include <curl/curl.h>
 #include <json.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-/* needed for urlencode */
-#include <waitress.h>
 
 #include "piano.h"
 #include "crypt.h"
@@ -100,13 +96,16 @@ PianoReturn_t PianoRequest (PianoHandle_t *ph, PianoRequest_t *req,
 					json_object_object_add (j, "syncTime",
 							json_object_new_int (timestamp));
 
-					urlencAuthToken = WaitressUrlEncode (ph->partner.authToken);
+					CURL * const curl = curl_easy_init ();
+					urlencAuthToken = curl_easy_escape (curl,
+							ph->partner.authToken, 0);
 					assert (urlencAuthToken != NULL);
 					snprintf (req->urlPath, sizeof (req->urlPath),
 							PIANO_RPC_PATH "method=auth.userLogin&"
 							"auth_token=%s&partner_id=%i", urlencAuthToken,
 							ph->partner.id);
-					free (urlencAuthToken);
+					curl_free (urlencAuthToken);
+					curl_easy_cleanup (curl);
 
 					break;
 				}
@@ -400,6 +399,47 @@ PianoReturn_t PianoRequest (PianoHandle_t *ph, PianoRequest_t *req,
 			break;
 		}
 
+		case PIANO_REQUEST_GET_SETTINGS: {
+			method = "user.getSettings";
+			break;
+		}
+
+		case PIANO_REQUEST_CHANGE_SETTINGS: {
+			PianoRequestDataChangeSettings_t *reqData = req->data;
+			assert (reqData != NULL);
+			assert (reqData->currentPassword != NULL);
+			assert (reqData->currentUsername != NULL);
+
+			json_object_object_add (j, "userInitiatedChange",
+					json_object_new_boolean (true));
+			json_object_object_add (j, "currentUsername",
+					json_object_new_string (reqData->currentUsername));
+			json_object_object_add (j, "currentPassword",
+					json_object_new_string (reqData->currentPassword));
+
+			if (reqData->explicitContentFilter != PIANO_UNDEFINED) {
+				json_object_object_add (j, "isExplicitContentFilterEnabled",
+						json_object_new_boolean (
+						reqData->explicitContentFilter == PIANO_TRUE));
+			}
+
+#define changeIfSet(field) \
+	if (reqData->field != NULL) { \
+		json_object_object_add (j, #field, \
+				json_object_new_string (reqData->field)); \
+	}
+
+			changeIfSet (newUsername);
+			changeIfSet (newPassword);
+
+#undef changeIfSet
+
+			req->secure = true;
+
+			method = "user.changeSettings";
+			break;
+		}
+
 		/* "high-level" wrapper */
 		case PIANO_REQUEST_RATE_SONG: {
 			/* love/ban song */
@@ -432,14 +472,17 @@ PianoReturn_t PianoRequest (PianoHandle_t *ph, PianoRequest_t *req,
 
 		assert (ph->user.authToken != NULL);
 
-		urlencAuthToken = WaitressUrlEncode (ph->user.authToken);
+		CURL * const curl = curl_easy_init ();
+		urlencAuthToken = curl_easy_escape (curl,
+				ph->user.authToken, 0);
 		assert (urlencAuthToken != NULL);
 
 		snprintf (req->urlPath, sizeof (req->urlPath), PIANO_RPC_PATH
 				"method=%s&auth_token=%s&partner_id=%i&user_id=%s", method,
 				urlencAuthToken, ph->partner.id, ph->user.listenerId);
 
-		free (urlencAuthToken);
+		curl_free (urlencAuthToken);
+		curl_easy_cleanup (curl);
 
 		json_object_object_add (j, "userAuthToken",
 				json_object_new_string (ph->user.authToken));

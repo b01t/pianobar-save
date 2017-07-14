@@ -23,11 +23,7 @@ THE SOFTWARE.
 
 /* everything that interacts with the user */
 
-#ifndef __FreeBSD__
-#define _POSIX_C_SOURCE 1 /* fileno() */
-#define _BSD_SOURCE /* strdup() */
-#define _DARWIN_C_SOURCE /* strdup() on OS X */
-#endif
+#include "config.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -131,106 +127,202 @@ void BarUiMsg (const BarSettings_t *settings, const BarUiMsg_t type,
 	fflush (stdout);
 }
 
-/*	fetch http resource (post request)
- *	@param waitress handle
- *	@param piano request (initialized by PianoRequest())
- */
-static WaitressReturn_t BarPianoHttpRequest (WaitressHandle_t *waith,
-		PianoRequest_t *req) {
-	waith->extraHeaders = "Content-Type: text/plain\r\n";
-	waith->postData = req->postData;
-	waith->method = WAITRESS_METHOD_POST;
-	waith->url.path = req->urlPath;
-	waith->url.tls = req->secure;
+typedef struct {
+	char *data;
+	size_t pos;
+} buffer;
 
-	return WaitressFetchBuf (waith, &req->responseData);
+static size_t httpFetchCb (char *ptr, size_t size, size_t nmemb,
+		void *userdata) {
+	buffer * const buffer = userdata;
+	size_t recvSize = size * nmemb;
+
+	if (buffer->data == NULL) {
+		if ((buffer->data = malloc (sizeof (*buffer->data) *
+				(recvSize + 1))) == NULL) {
+			return 0;
+		}
+	} else {
+		char *newbuf;
+		if ((newbuf = realloc (buffer->data, sizeof (*buffer->data) *
+				(buffer->pos + recvSize + 1))) == NULL) {
+			free (buffer->data);
+			return 0;
+		}
+		buffer->data = newbuf;
+	}
+	memcpy (buffer->data + buffer->pos, ptr, recvSize);
+	buffer->pos += recvSize;
+	buffer->data[buffer->pos] = '\0';
+
+	return recvSize;
+}
+
+/*	libcurl progress callback. aborts the current request if user pressed ^C
+ */
+int progressCb (void * const data, double dltotal, double dlnow,
+		double ultotal, double ulnow) {
+	const sig_atomic_t lint = *((sig_atomic_t *) data);
+	if (lint) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+#define setAndCheck(k,v) \
+	httpret = curl_easy_setopt (http, k, v); \
+	assert (httpret == CURLE_OK);
+
+static CURLcode BarPianoHttpRequest (CURL * const http,
+		const BarSettings_t * const settings, PianoRequest_t * const req) {
+	buffer buffer = {NULL, 0};
+	sig_atomic_t lint = 0, *prevint;
+
+	char url[2048];
+	assert (settings->rpcHost != NULL);
+	assert (settings->rpcTlsPort != NULL);
+	assert (req->urlPath != NULL);
+	int ret = snprintf (url, sizeof (url), "%s://%s:%s%s",
+		req->secure ? "https" : "http",
+		settings->rpcHost,
+		req->secure ? settings->rpcTlsPort : "80",
+		req->urlPath);
+	assert (ret >= 0 && ret <= (int) sizeof (url));
+
+	/* save the previous interrupt destination */
+	prevint = interrupted;
+	interrupted = &lint;
+
+	curl_easy_reset (http);
+	CURLcode httpret;
+	setAndCheck (CURLOPT_URL, url);
+	setAndCheck (CURLOPT_USERAGENT, PACKAGE "-" VERSION);
+	setAndCheck (CURLOPT_POSTFIELDS, req->postData);
+	setAndCheck (CURLOPT_WRITEFUNCTION, httpFetchCb);
+	setAndCheck (CURLOPT_WRITEDATA, &buffer);
+	setAndCheck (CURLOPT_PROGRESSFUNCTION, progressCb);
+	setAndCheck (CURLOPT_PROGRESSDATA, &lint);
+	setAndCheck (CURLOPT_NOPROGRESS, 0);
+	setAndCheck (CURLOPT_POST, 1);
+	if (settings->caBundle != NULL) {
+		setAndCheck (CURLOPT_CAINFO, settings->caBundle);
+	}
+
+	if (settings->bindTo!= NULL) {
+		if (curl_easy_setopt (http, CURLOPT_INTERFACE,
+				settings->bindTo) != CURLE_OK) {
+			/* if binding fails, notice about that */
+			BarUiMsg (settings, MSG_ERR, "bindTo (%s) is invalid!\n",
+					settings->bindTo);
+		}
+	}
+
+	/* set up proxy (control proxy for non-us citizen or global proxy for poor
+	 * firewalled fellows) */
+	if (settings->controlProxy != NULL) {
+		/* control proxy overrides global proxy */
+		if (curl_easy_setopt (http, CURLOPT_PROXY,
+				settings->controlProxy) != CURLE_OK) {
+			/* if setting proxy fails, url is invalid */
+			BarUiMsg (settings, MSG_ERR, "Control proxy (%s) is invalid!\n",
+					 settings->controlProxy);
+		}
+	} else if (settings->proxy != NULL && strlen (settings->proxy) > 0) {
+		if (curl_easy_setopt (http, CURLOPT_PROXY,
+				settings->proxy) != CURLE_OK) {
+			/* if setting proxy fails, url is invalid */
+			BarUiMsg (settings, MSG_ERR, "Proxy (%s) is invalid!\n",
+					 settings->proxy);
+		}
+	}
+
+	struct curl_slist *list = NULL;
+	list = curl_slist_append (list, "Content-Type: text/plain");
+	setAndCheck (CURLOPT_HTTPHEADER, list);
+
+	httpret = curl_easy_perform (http);
+
+	curl_slist_free_all (list);
+
+	req->responseData = buffer.data;
+
+	interrupted = prevint;
+
+	return httpret;
 }
 
 /*	piano wrapper: prepare/execute http request and pass result back to
- *	libpiano (updates data structures)
- *	@param app handle
- *	@param request type
- *	@param request data
- *	@param stores piano return code
- *	@param stores waitress return code
- *	@return 1 on success, 0 otherwise
+ *	libpiano
  */
-int BarUiPianoCall (BarApp_t * const app, PianoRequestType_t type,
-		void *data, PianoReturn_t *pRet, WaitressReturn_t *wRet) {
-	PianoRequest_t req;
-
-	memset (&req, 0, sizeof (req));
+bool BarUiPianoCall (BarApp_t * const app, const PianoRequestType_t type,
+		void * const data, PianoReturn_t * const pRet, CURLcode * const wRet) {
+	PianoReturn_t pRetLocal = PIANO_RET_OK;
+	CURLcode wRetLocal = CURLE_OK;
+	bool ret = false;
 
 	/* repeat as long as there are http requests to do */
 	do {
-		req.data = data;
+		PianoRequest_t req = { .data = data, .responseData = NULL };
 
-		*pRet = PianoRequest (&app->ph, &req, type);
-		if (*pRet != PIANO_RET_OK) {
-			BarUiMsg (&app->settings, MSG_NONE, "Error: %s\n", PianoErrorToStr (*pRet));
-			PianoDestroyRequest (&req);
-			return 0;
+		pRetLocal = PianoRequest (&app->ph, &req, type);
+		if (pRetLocal != PIANO_RET_OK) {
+			BarUiMsg (&app->settings, MSG_NONE, "Error: %s\n",
+					PianoErrorToStr (pRetLocal));
+			goto cleanup;
 		}
 
-		*wRet = BarPianoHttpRequest (&app->waith, &req);
-		if (*wRet != WAITRESS_RET_OK) {
-			BarUiMsg (&app->settings, MSG_NONE, "Network error: %s\n", WaitressErrorToStr (*wRet));
-			if (req.responseData != NULL) {
-				free (req.responseData);
-			}
-			PianoDestroyRequest (&req);
-			return 0;
+		wRetLocal = BarPianoHttpRequest (app->http, &app->settings, &req);
+		if (wRetLocal == CURLE_ABORTED_BY_CALLBACK) {
+			BarUiMsg (&app->settings, MSG_NONE, "Interrupted.\n");
+			goto cleanup;
+		} else if (wRetLocal != CURLE_OK) {
+			BarUiMsg (&app->settings, MSG_NONE, "Network error: %s\n",
+					curl_easy_strerror (wRetLocal));
+			goto cleanup;
 		}
 
-		*pRet = PianoResponse (&app->ph, &req);
-		if (*pRet != PIANO_RET_CONTINUE_REQUEST) {
+		pRetLocal = PianoResponse (&app->ph, &req);
+		if (pRetLocal != PIANO_RET_CONTINUE_REQUEST) {
 			/* checking for request type avoids infinite loops */
-			if (*pRet == PIANO_RET_P_INVALID_AUTH_TOKEN &&
+			if (pRetLocal == PIANO_RET_P_INVALID_AUTH_TOKEN &&
 					type != PIANO_REQUEST_LOGIN) {
 				/* reauthenticate */
-				PianoReturn_t authpRet;
-				WaitressReturn_t authwRet;
 				PianoRequestDataLogin_t reqData;
 				reqData.user = app->settings.username;
 				reqData.password = app->settings.password;
 				reqData.step = 0;
 
-				BarUiMsg (&app->settings, MSG_NONE, "Reauthentication required... ");
-				if (!BarUiPianoCall (app, PIANO_REQUEST_LOGIN, &reqData, &authpRet,
-						&authwRet)) {
-					*pRet = authpRet;
-					*wRet = authwRet;
-					if (req.responseData != NULL) {
-						free (req.responseData);
-					}
-					PianoDestroyRequest (&req);
-					return 0;
+				BarUiMsg (&app->settings, MSG_NONE,
+						"Reauthentication required... ");
+				if (!BarUiPianoCall (app, PIANO_REQUEST_LOGIN, &reqData,
+						&pRetLocal, &wRetLocal)) {
+					goto cleanup;
 				} else {
 					/* try again */
-					*pRet = PIANO_RET_CONTINUE_REQUEST;
+					pRetLocal = PIANO_RET_CONTINUE_REQUEST;
 					BarUiMsg (&app->settings, MSG_INFO, "Trying again... ");
 				}
-			} else if (*pRet != PIANO_RET_OK) {
-				BarUiMsg (&app->settings, MSG_NONE, "Error: %s\n", PianoErrorToStr (*pRet));
-				if (req.responseData != NULL) {
-					free (req.responseData);
-				}
-				PianoDestroyRequest (&req);
-				return 0;
+			} else if (pRetLocal != PIANO_RET_OK) {
+				BarUiMsg (&app->settings, MSG_NONE, "Error: %s\n",
+						PianoErrorToStr (pRetLocal));
+				goto cleanup;
 			} else {
 				BarUiMsg (&app->settings, MSG_NONE, "Ok.\n");
+				ret = true;
 			}
 		}
-		/* we can destroy the request at this point, even when this call needs
-		 * more than one http request. persistent data (step counter, e.g.) is
-		 * stored in req.data */
-		if (req.responseData != NULL) {
-			free (req.responseData);
-		}
-		PianoDestroyRequest (&req);
-	} while (*pRet == PIANO_RET_CONTINUE_REQUEST);
 
-	return 1;
+cleanup:
+		/* persistent data is stored in req.data */
+		free (req.responseData);
+		PianoDestroyRequest (&req);
+	} while (pRetLocal == PIANO_RET_CONTINUE_REQUEST);
+
+	*pRet = pRetLocal;
+	*wRet = wRetLocal;
+
+	return ret;
 }
 
 /*	Station sorting functions */
@@ -481,7 +573,7 @@ char *BarUiSelectMusicId (BarApp_t *app, PianoStation_t *station,
 	if (BarReadlineStr (lineBuf, sizeof (lineBuf), &app->input,
 			BAR_RL_DEFAULT) > 0) {
 		PianoReturn_t pRet;
-		WaitressReturn_t wRet;
+		CURLcode wRet;
 		PianoRequestDataSearch_t reqData;
 
 		reqData.searchStr = lineBuf;
@@ -680,12 +772,11 @@ size_t BarUiListSongs (const BarSettings_t *settings,
  *	@param current station
  *	@param current song
  *	@param piano error-code (PIANO_RET_OK if not applicable)
- *	@param waitress error-code (WAITRESS_RET_OK if not applicable)
  */
 void BarUiStartEventCmd (const BarSettings_t *settings, const char *type,
 		const PianoStation_t *curStation, const PianoSong_t *curSong,
 		const player_t * const player, PianoStation_t *stations,
-                PianoReturn_t pRet, WaitressReturn_t wRet) {
+		PianoReturn_t pRet, CURLcode wRet) {
 	pid_t chld;
 	int pipeFd[2];
 
@@ -720,7 +811,8 @@ void BarUiStartEventCmd (const BarSettings_t *settings, const char *type,
 
 		pipeWriteFd = fdopen (pipeFd[1], "w");
 
-		if (curSong != NULL && stations != NULL && curStation->isQuickMix) {
+		if (curSong != NULL && stations != NULL && curStation != NULL &&
+				curStation->isQuickMix) {
 			songStation = PianoFindStationById (stations, curSong->stationId);
 		}
 
@@ -748,7 +840,7 @@ void BarUiStartEventCmd (const BarSettings_t *settings, const char *type,
 				pRet,
 				PianoErrorToStr (pRet),
 				wRet,
-				WaitressErrorToStr (wRet),
+				curl_easy_strerror (wRet),
 				player->songDuration,
 				player->songPlayed,
 				curSong == NULL ? PIANO_RATE_NONE : curSong->rating,

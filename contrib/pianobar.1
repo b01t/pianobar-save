@@ -37,9 +37,7 @@ http://xiph.org/ao/doc/config.html
 .SH CONFIGURATION
 The configuration file consists of simple
 .B key = value
-lines, each terminated with a newline (\\n) character. Note that keys and
-values are both case sensitive, and there must be exactly one space on each
-side of the equals sign.
+lines, each terminated with a newline (\\n) character. Keys are case sensitive.
 
 act_* keys control 
 .B pianobar's
@@ -170,6 +168,10 @@ Reset volume.
 Increase volume.
 
 .TP
+.B act_settings = !
+Change Pandora settings.
+
+.TP
 .B at_icon =  @ 
 Replacement for %@ in station format string. It's " @ " by default.
 
@@ -194,6 +196,22 @@ or the key you defined in
 .TP
 .B ban_icon = </3
 Icon for banned songs.
+
+.TP
+.B bind_to = {if!tunX,host!x.x.x.x,..}
+This sets the interface name to use as outgoing network interface. The name can
+be an interface name, an IP address, or a host name. (from CURLOPT_INTERFACE)
+
+It can be used as a replacement for
+.B control_proxy
+in conjunction with OpenVPN's
+option
+.B route-nopull.
+
+.TP
+.B ca_bundle = /etc/ssl/certs/ca-certificates.crt
+Path to CA certifiate bundle, containing the root and intermediate certificates
+required to validate Pandora's SSL certificate.
 
 .TP
 .B control_proxy = http://user:password@host:port/
@@ -290,6 +308,12 @@ Station name
 Station id
 
 .TP
+.B gain_mul = 1.0
+Pandora sends a ReplayGain value with every song. This sets a multiplier so that the gain adjustment can be
+reduced. 0.0 means no gain adjustment, 1.0 means full gain adjustment, values inbetween reduce the magnitude
+of gain adjustment.
+
+.TP
 .B history = 5
 Keep a history of the last n songs (5, by default). You can rate these songs.
 
@@ -333,10 +357,6 @@ variable. Only "Basic" http authentication is supported.
 Sort station list by name or type (is quickmix) and name. name_az for example
 sorts by name from a to z, quickmix_01_name_za by type (quickmix at the
 bottom) and name from z to a.
-
-.TP
-.B tls_fingerprint = D9980BA2CC0F97BB03822C6211EAEA4A06EEF427
-Hex-encoded SHA1 fingerprint of Pandora's TLS certificate.
 
 .TP
 .B user = your@user.name

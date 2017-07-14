@@ -21,11 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_MAIN_H_4ZGSCG6X
-#define SRC_MAIN_H_4ZGSCG6X
+#pragma once
+
+#include <curl/curl.h>
 
 #include <piano.h>
-#include <waitress.h>
 
 #include "player.h"
 #include "settings.h"
@@ -33,17 +33,20 @@ THE SOFTWARE.
 
 typedef struct {
 	PianoHandle_t ph;
-	WaitressHandle_t waith;
+	CURL *http;
 	player_t player;
 	BarSettings_t settings;
 	/* first item is current song */
 	PianoSong_t *playlist;
 	PianoSong_t *songHistory;
-	PianoStation_t *curStation;
-	char doQuit;
+	/* station of current song and station used to fetch songs from if playlist
+	 * is empty */
+	PianoStation_t *curStation, *nextStation;
+	sig_atomic_t doQuit;
 	BarReadlineFds_t input;
 	unsigned int playerErrors;
 } BarApp_t;
 
-#endif /* SRC_MAIN_H_4ZGSCG6X */
+#include <signal.h>
+extern sig_atomic_t *interrupted;
 

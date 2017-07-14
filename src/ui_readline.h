@@ -21,16 +21,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_UI_READLINE_H_IFRX74VM
-#define SRC_UI_READLINE_H_IFRX74VM
+#pragma once
 
 #include <stdbool.h>
 #include <sys/select.h>
 
+/* bitfield */
 typedef enum {
 	BAR_RL_DEFAULT = 0,
 	BAR_RL_FULLRETURN = 1, /* return if buffer is full */
 	BAR_RL_NOECHO = 2, /* don't echo to stdout */
+	BAR_RL_NOINT = 4, /* don’t change interrupted variable */
 } BarReadlineFlags_t;
 
 typedef struct {
@@ -45,6 +46,4 @@ size_t BarReadlineStr (char *, const size_t,
 		BarReadlineFds_t *, const BarReadlineFlags_t);
 size_t BarReadlineInt (int *, BarReadlineFds_t *);
 bool BarReadlineYesNo (bool, BarReadlineFds_t *);
-
-#endif /* SRC_UI_READLINE_H_IFRX74VM */
 

@@ -21,8 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_LIBPIANO_PIANO_H_MFBT13PN
-#define SRC_LIBPIANO_PIANO_H_MFBT13PN
+#pragma once
+
+#include "../config.h"
 
 #include <stdbool.h>
 #ifdef __FreeBSD__
@@ -148,6 +149,11 @@ typedef struct {
 	PianoSong_t *feedback;
 } PianoStationInfo_t;
 
+typedef struct {
+	char *username;
+	bool explicitContentFilter;
+} PianoSettings_t;
+
 typedef enum {
 	/* 0 is reserved: memset (x, 0, sizeof (x)) */
 	PIANO_REQUEST_LOGIN = 1,
@@ -170,6 +176,8 @@ typedef enum {
 	PIANO_REQUEST_GET_STATION_INFO = 20,
 	PIANO_REQUEST_DELETE_FEEDBACK = 21,
 	PIANO_REQUEST_DELETE_SEED = 22,
+	PIANO_REQUEST_GET_SETTINGS = 23,
+	PIANO_REQUEST_CHANGE_SETTINGS = 24,
 } PianoRequestType_t;
 
 typedef struct PianoRequest {
@@ -245,6 +253,18 @@ typedef struct {
 	PianoStation_t *station;
 } PianoRequestDataDeleteSeed_t;
 
+typedef enum {
+	PIANO_UNDEFINED = 0,
+	PIANO_FALSE = 1,
+	PIANO_TRUE = 2,
+} PianoTristate_t;
+
+typedef struct {
+	char *currentUsername, *newUsername;
+	char *currentPassword, *newPassword;
+	PianoTristate_t explicitContentFilter;
+} PianoRequestDataChangeSettings_t;
+
 /* pandora error code offset */
 #define PIANO_RET_OFFSET 1024
 typedef enum {
@@ -317,7 +337,7 @@ void *PianoListDelete (PianoListHead_t * const l, PianoListHead_t * const e)
 		__attribute__ ((warn_unused_result));
 #define PianoListDeleteP(l,e) PianoListDelete(((l) == NULL) ? NULL : &(l)->head, \
 		&(e)->head)
-#define PianoListNextP(e) ((void *) (e)->head.next)
+#define PianoListNextP(e) ((e) == NULL ? NULL : (void *) (e)->head.next)
 void *PianoListPrepend (PianoListHead_t * const l, PianoListHead_t * const e)
 		__attribute__ ((warn_unused_result));
 #define PianoListPrependP(l,e) PianoListPrepend (((l) == NULL) ? NULL : &(l)->head, \
@@ -346,4 +366,3 @@ PianoStation_t *PianoFindStationById (PianoStation_t * const,
 		const char * const);
 const char *PianoErrorToStr (PianoReturn_t);
 
-#endif /* SRC_LIBPIANO_PIANO_H_MFBT13PN */

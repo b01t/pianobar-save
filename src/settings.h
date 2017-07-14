@@ -21,13 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_SETTINGS_H_IPL0ON9L
-#define SRC_SETTINGS_H_IPL0ON9L
+#pragma once
 
 #include <stdbool.h>
 
 #include <piano.h>
-#include <waitress.h>
 
 /* update structure in ui_dispatch.h if you add shortcuts here */
 typedef enum {
@@ -60,8 +58,9 @@ typedef enum {
 	BAR_KS_PLAY = 26,
 	BAR_KS_PAUSE = 27,
 	BAR_KS_VOLRESET = 28,
+	BAR_KS_SETTINGS = 29,
 	/* insert new shortcuts _before_ this element and increase its value */
-	BAR_KS_COUNT = 29,
+	BAR_KS_COUNT = 30,
 } BarKeyShortcutId_t;
 
 #define BAR_KS_DISABLED '\x00'
@@ -76,25 +75,27 @@ typedef enum {
 	BAR_SORT_COUNT = 6,
 } BarStationSorting_t;
 
-#include "ui_types.h"
-
 typedef struct {
 	char *prefix;
 	char *postfix;
 } BarMsgFormatStr_t;
 
+#include "ui_types.h"
+
 typedef struct {
 	bool autoselect;
 	unsigned int history, maxPlayerErrors;
 	int volume;
+	float gainMul;
 	BarStationSorting_t sortOrder;
 	PianoAudioQuality_t audioQuality;
 	char *username;
 	char *password, *passwordCmd;
 	char *controlProxy; /* non-american listeners need this */
 	char *proxy;
+	char *bindTo;
 	char *autostartStation;
-	char *save_dir;
+    char *save_dir;
 	char *eventCmd;
 	char *loveIcon;
 	char *banIcon;
@@ -103,8 +104,7 @@ typedef struct {
 	char *npStationFormat;
 	char *listSongFormat;
 	char *fifo;
-	char *rpcHost, *rpcTlsPort, *partnerUser, *partnerPassword, *device, *inkey, *outkey;
-	char tlsFingerprint[20];
+	char *rpcHost, *rpcTlsPort, *partnerUser, *partnerPassword, *device, *inkey, *outkey, *caBundle;
 	char keys[BAR_KS_COUNT];
 	BarMsgFormatStr_t msgFormat[MSG_COUNT];
 } BarSettings_t;
@@ -116,4 +116,3 @@ void BarSettingsDestroy (BarSettings_t *);
 void BarSettingsRead (BarSettings_t *);
 void BarSettingsWrite (PianoStation_t *, BarSettings_t *);
 
-#endif /* SRC_SETTINGS_H_IPL0ON9L */

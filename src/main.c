@@ -21,11 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef __FreeBSD__
-#define _POSIX_C_SOURCE 1 /* fileno() */
-#define _BSD_SOURCE /* strdup() */
-#define _DARWIN_C_SOURCE /* strdup() on OS X */
-#endif
+#include "config.h"
 
 /* system includes */
 #include <stdlib.h>
@@ -56,38 +52,15 @@ THE SOFTWARE.
 
 #include "main.h"
 #include "terminal.h"
-#include "config.h"
 #include "ui.h"
 #include "ui_dispatch.h"
 #include "ui_readline.h"
-
-/*	copy proxy settings to waitress handle
- */
-static void BarMainLoadProxy (const BarSettings_t *settings,
-		WaitressHandle_t *waith) {
-	/* set up proxy (control proxy for non-us citizen or global proxy for poor
-	 * firewalled fellows) */
-	if (settings->controlProxy != NULL) {
-		/* control proxy overrides global proxy */
-		if (!WaitressSetProxy (waith, settings->controlProxy)) {
-			/* if setting proxy fails, url is invalid */
-			BarUiMsg (settings, MSG_ERR, "Control proxy (%s) is invalid!\n",
-					 settings->controlProxy);
-		}
-	} else if (settings->proxy != NULL && strlen (settings->proxy) > 0) {
-		if (!WaitressSetProxy (waith, settings->proxy)) {
-			/* if setting proxy fails, url is invalid */
-			BarUiMsg (settings, MSG_ERR, "Proxy (%s) is invalid!\n",
-					 settings->proxy);
-		}
-	}
-}
 
 /*	authenticate user
  */
 static bool BarMainLoginUser (BarApp_t *app) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataLogin_t reqData;
 	bool ret;
 
@@ -99,6 +72,7 @@ static bool BarMainLoginUser (BarApp_t *app) {
 	ret = BarUiPianoCall (app, PIANO_REQUEST_LOGIN, &reqData, &pRet, &wRet);
 	BarUiStartEventCmd (&app->settings, "userlogin", NULL, NULL, &app->player,
 			NULL, pRet, wRet);
+
 	return ret;
 }
 
@@ -112,7 +86,9 @@ static bool BarMainGetLoginCredentials (BarSettings_t *settings,
 		char nameBuf[100];
 
 		BarUiMsg (settings, MSG_QUESTION, "Email: ");
-		BarReadlineStr (nameBuf, sizeof (nameBuf), input, BAR_RL_DEFAULT);
+		if (BarReadlineStr (nameBuf, sizeof (nameBuf), input, BAR_RL_DEFAULT) == 0) {
+			return false;
+		}
 		settings->username = strdup (nameBuf);
 		usernameFromConfig = false;
 	}
@@ -126,7 +102,10 @@ static bool BarMainGetLoginCredentials (BarSettings_t *settings,
 
 		if (settings->passwordCmd == NULL) {
 			BarUiMsg (settings, MSG_QUESTION, "Password: ");
-			BarReadlineStr (passBuf, sizeof (passBuf), input, BAR_RL_NOECHO);
+			if (BarReadlineStr (passBuf, sizeof (passBuf), input, BAR_RL_NOECHO) == 0) {
+				puts ("");
+				return false;
+			}
 			/* write missing newline */
 			puts ("");
 			settings->password = strdup (passBuf);
@@ -183,37 +162,36 @@ static bool BarMainGetLoginCredentials (BarSettings_t *settings,
 
 	return true;
 }
-
-/*	check for save folder, create if it does not exist
- */
+/*  check for save folder, create if it does not exist
+ *   */
 static void BarMainCheckSaveDirectory (BarSettings_t *settings) {
-	BarUiMsg (settings, MSG_INFO, "Looking for save directory... ");
+    BarUiMsg (settings, MSG_INFO, "Looking for save directory... ");
 
-	char *save_dir = settings->save_dir;
+    char *save_dir = settings->save_dir;
 
-	if (0 != access(save_dir, F_OK)) {
-		if (ENOTDIR == errno) {
-			BarUiMsg (settings, MSG_ERR, "\"%s\" Is not a directory!\n", save_dir);
-		}
-		if (ENOENT == errno) {
-			BarUiMsg (settings, MSG_NONE, "\n%s\nNot found! attempting to create... ", save_dir);
+    if (0 != access(save_dir, F_OK)) {
+        if (ENOTDIR == errno) {
+            BarUiMsg (settings, MSG_ERR, "\"%s\" Is not a directory!\n", save_dir);
+        }
+    
+        if (ENOENT == errno) {
+            BarUiMsg (settings, MSG_NONE, "\n%s\nNot found! attempting to create... ", save_dir);
 
-			char * buffer [2000];
+            char * buffer [2000];
 
-			sprintf(buffer, "mkdir -p \"%s\"", save_dir);
-			system(buffer);
-			BarUiMsg (settings, MSG_NONE, "Ok.\n");
-		}
-	} else {
-		BarUiMsg (settings, MSG_NONE, "Ok.\n");
-	}
+            sprintf(buffer, "mkdir -p \"%s\"", save_dir);
+            system(buffer);
+            BarUiMsg (settings, MSG_NONE, "Ok.\n");
+        }
+    } else {
+        BarUiMsg (settings, MSG_NONE, "Ok.\n");
+    }
 }
-
 /*	get station list
  */
 static bool BarMainGetStations (BarApp_t *app) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	bool ret;
 
 	BarUiMsg (&app->settings, MSG_INFO, "Get stations... ");
@@ -228,20 +206,17 @@ static bool BarMainGetStations (BarApp_t *app) {
 static void BarMainGetInitialStation (BarApp_t *app) {
 	/* try to get autostart station */
 	if (app->settings.autostartStation != NULL) {
-		app->curStation = PianoFindStationById (app->ph.stations,
+		app->nextStation = PianoFindStationById (app->ph.stations,
 				app->settings.autostartStation);
-		if (app->curStation == NULL) {
+		if (app->nextStation == NULL) {
 			BarUiMsg (&app->settings, MSG_ERR,
 					"Error: Autostart station not found.\n");
 		}
 	}
 	/* no autostart? ask the user */
-	if (app->curStation == NULL) {
-		app->curStation = BarUiSelectStation (app, app->ph.stations,
+	if (app->nextStation == NULL) {
+		app->nextStation = BarUiSelectStation (app, app->ph.stations,
 				"Select station: ", NULL, app->settings.autoselect);
-	}
-	if (app->curStation != NULL) {
-		BarUiPrintStation (&app->settings, app->curStation);
 	}
 }
 
@@ -250,7 +225,7 @@ static void BarMainGetInitialStation (BarApp_t *app) {
 static void BarMainHandleUserInput (BarApp_t *app) {
 	char buf[2];
 	if (BarReadline (buf, sizeof (buf), NULL, &app->input,
-			BAR_RL_FULLRETURN | BAR_RL_NOECHO, 1) > 0) {
+			BAR_RL_FULLRETURN | BAR_RL_NOECHO | BAR_RL_NOINT, 1) > 0) {
 		BarUiDispatch (app, buf[0], app->curStation, app->playlist, true,
 				BAR_DC_GLOBAL);
 	}
@@ -260,22 +235,23 @@ static void BarMainHandleUserInput (BarApp_t *app) {
  */
 static void BarMainGetPlaylist (BarApp_t *app) {
 	PianoReturn_t pRet;
-	WaitressReturn_t wRet;
+	CURLcode wRet;
 	PianoRequestDataGetPlaylist_t reqData;
-	reqData.station = app->curStation;
+	reqData.station = app->nextStation;
 	reqData.quality = app->settings.audioQuality;
 
 	BarUiMsg (&app->settings, MSG_INFO, "Receiving new playlist... ");
 	if (!BarUiPianoCall (app, PIANO_REQUEST_GET_PLAYLIST,
 			&reqData, &pRet, &wRet)) {
-		app->curStation = NULL;
+		app->nextStation = NULL;
 	} else {
 		app->playlist = reqData.retPlaylist;
 		if (app->playlist == NULL) {
 			BarUiMsg (&app->settings, MSG_INFO, "No tracks left.\n");
-			app->curStation = NULL;
+			app->nextStation = NULL;
 		}
 	}
+	app->curStation = app->nextStation;
 	BarUiStartEventCmd (&app->settings, "stationfetchplaylist",
 			app->curStation, app->playlist, &app->player, app->ph.stations,
 			pRet, wRet);
@@ -304,23 +280,26 @@ static void BarMainStartPlayback (BarApp_t *app, pthread_t *playerThread) {
 		memset (&app->player, 0, sizeof (app->player));
 
 		app->player.url = curSong->audioUrl;
-		app->player.artist = curSong->artist;
-		app->player.title = curSong->title;
-		app->player.station = app->curStation->name;
+        app->player.artist = curSong->artist;
+        app->player.title = curSong->title;
+        app->player.station = app->curStation->name;
 		app->player.gain = curSong->fileGain;
 		app->player.settings = &app->settings;
 		app->player.songDuration = curSong->length;
 		pthread_mutex_init (&app->player.pauseMutex, NULL);
 		pthread_cond_init (&app->player.pauseCond, NULL);
 
+		assert (interrupted == &app->doQuit);
+		interrupted = &app->player.interrupted;
+
 		/* throw event */
 		BarUiStartEventCmd (&app->settings, "songstart",
 				app->curStation, curSong, &app->player, app->ph.stations,
-				PIANO_RET_OK, WAITRESS_RET_OK);
+				PIANO_RET_OK, CURLE_OK);
 
 		/* prevent race condition, mode must _not_ be DEAD if
 		 * thread has been started */
-		app->player.mode = PLAYER_STARTING;
+		app->player.mode = PLAYER_WAITING;
 		/* start player */
 		pthread_create (playerThread, NULL, BarPlayerThread,
 				&app->player);
@@ -334,7 +313,7 @@ static void BarMainPlayerCleanup (BarApp_t *app, pthread_t *playerThread) {
 
 	BarUiStartEventCmd (&app->settings, "songfinish", app->curStation,
 			app->playlist, &app->player, app->ph.stations, PIANO_RET_OK,
-			WAITRESS_RET_OK);
+			CURLE_OK);
 
 	/* FIXME: pthread_join blocks everything if network connection
 	 * is hung up e.g. */
@@ -348,13 +327,16 @@ static void BarMainPlayerCleanup (BarApp_t *app, pthread_t *playerThread) {
 		++app->playerErrors;
 		if (app->playerErrors >= app->settings.maxPlayerErrors) {
 			/* don't continue playback if thread reports too many error */
-			app->curStation = NULL;
+			app->nextStation = NULL;
 		}
 	} else {
-		app->curStation = NULL;
+		app->nextStation = NULL;
 	}
 
 	memset (&app->player, 0, sizeof (app->player));
+
+	assert (interrupted == &app->player.interrupted);
+	interrupted = &app->doQuit;
 }
 
 /*	print song duration
@@ -382,13 +364,11 @@ static void BarMainPrintTime (BarApp_t *app) {
 static void BarMainLoop (BarApp_t *app) {
 	pthread_t playerThread;
 
-	BarMainCheckSaveDirectory (&app->settings);
+    BarMainCheckSaveDirectory(&app->settings);
 
 	if (!BarMainGetLoginCredentials (&app->settings, &app->input)) {
 		return;
 	}
-
-	BarMainLoadProxy (&app->settings, &app->waith);
 
 	if (!BarMainLoginUser (app)) {
 		return;
@@ -397,7 +377,6 @@ static void BarMainLoop (BarApp_t *app) {
 	if (!BarMainGetStations (app)) {
 		return;
 	}
-
 
 	BarMainGetInitialStation (app);
 
@@ -408,12 +387,15 @@ static void BarMainLoop (BarApp_t *app) {
 	while (!app->doQuit) {
 		/* song finished playing, clean up things/scrobble song */
 		if (app->player.mode == PLAYER_FINISHED) {
+			if (app->player.interrupted != 0) {
+				app->doQuit = 1;
+			}
 			BarMainPlayerCleanup (app, &playerThread);
 		}
 
 		/* check whether player finished playing and start playing new
 		 * song */
-		if (app->player.mode == PLAYER_DEAD && app->curStation != NULL) {
+		if (app->player.mode == PLAYER_DEAD) {
 			/* what's next? */
 			if (app->playlist != NULL) {
 				PianoSong_t *histsong = app->playlist;
@@ -421,7 +403,10 @@ static void BarMainLoop (BarApp_t *app) {
 				histsong->head.next = NULL;
 				BarUiHistoryPrepend (app, histsong);
 			}
-			if (app->playlist == NULL) {
+			if (app->playlist == NULL && app->nextStation != NULL && !app->doQuit) {
+				if (app->nextStation != app->curStation) {
+					BarUiPrintStation (&app->settings, app->nextStation);
+				}
 				BarMainGetPlaylist (app);
 			}
 			/* song ready to play */
@@ -443,6 +428,23 @@ static void BarMainLoop (BarApp_t *app) {
 	}
 }
 
+sig_atomic_t *interrupted = NULL;
+
+static void intHandler (int signal) {
+	if (interrupted != NULL) {
+		*interrupted += 1;
+	}
+}
+
+static void BarMainSetupSigaction () {
+	struct sigaction act = {
+			.sa_handler = intHandler,
+			.sa_flags = 0,
+			};
+	sigemptyset (&act.sa_mask);
+	sigaction (SIGINT, &act, NULL);
+}
+
 int main (int argc, char **argv) {
 	static BarApp_t app;
 
@@ -453,12 +455,13 @@ int main (int argc, char **argv) {
 
 	/* signals */
 	signal (SIGPIPE, SIG_IGN);
+	BarMainSetupSigaction ();
+	interrupted = &app.doQuit;
 
 	/* init some things */
 	gcry_check_version (NULL);
 	gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
 	gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
-	gnutls_global_init ();
 	BarPlayerInit ();
 
 	BarSettingsInit (&app.settings);
@@ -483,10 +486,9 @@ int main (int argc, char **argv) {
 				app.settings.keys[BAR_KS_HELP]);
 	}
 
-	WaitressInit (&app.waith);
-	app.waith.url.host = app.settings.rpcHost;
-	app.waith.url.tlsPort = app.settings.rpcTlsPort;
-	app.waith.tlsFingerprint = app.settings.tlsFingerprint;
+	curl_global_init (CURL_GLOBAL_DEFAULT);
+	app.http = curl_easy_init ();
+	assert (app.http != NULL);
 
 	/* init fds */
 	FD_ZERO(&app.input.set);
@@ -527,9 +529,9 @@ int main (int argc, char **argv) {
 	PianoDestroy (&app.ph);
 	PianoDestroyPlaylist (app.songHistory);
 	PianoDestroyPlaylist (app.playlist);
-	WaitressFree (&app.waith);
+	curl_easy_cleanup (app.http);
+	curl_global_cleanup ();
 	BarPlayerDestroy ();
-	gnutls_global_deinit ();
 	BarSettingsDestroy (&app.settings);
 
 	/* restore terminal attributes, zsh doesn't need this, bash does... */

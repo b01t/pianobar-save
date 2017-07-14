@@ -21,13 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_UI_H_46P20TS0
-#define SRC_UI_H_46P20TS0
+#pragma once
 
 #include <stdbool.h>
 
 #include <piano.h>
-#include <waitress.h>
 
 #include "settings.h"
 #include "player.h"
@@ -50,9 +48,8 @@ void BarUiPrintSong (const BarSettings_t *, const PianoSong_t *,
 size_t BarUiListSongs (const BarSettings_t *, const PianoSong_t *, const char *);
 void BarUiStartEventCmd (const BarSettings_t *, const char *,
 		const PianoStation_t *, const PianoSong_t *, const player_t *,
-		PianoStation_t *, PianoReturn_t, WaitressReturn_t);
-int BarUiPianoCall (BarApp_t * const, PianoRequestType_t,
-		void *, PianoReturn_t *, WaitressReturn_t *);
+		PianoStation_t *, PianoReturn_t, CURLcode);
+bool BarUiPianoCall (BarApp_t * const, const PianoRequestType_t,
+		void *, PianoReturn_t *, CURLcode *);
 void BarUiHistoryPrepend (BarApp_t *app, PianoSong_t *song);
 
-#endif /* SRC_UI_H_46P20TS0 */

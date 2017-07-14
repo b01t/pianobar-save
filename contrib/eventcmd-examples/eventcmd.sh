@@ -11,7 +11,7 @@ case "$1" in
 #	songstart)
 #		echo 'naughty.notify({title = "pianobar", text = "Now playing: ' "$title" ' by ' "$artist" '"})' | awesome-client -
 
-#		echo "$title -- $artist" > $HOME/.config/pianobar/nowplaying
+#		echo "$title -- $artist" > "${XDG_HOME_CONFIG:-${HOME}/.config}/pianobar/nowplaying"
 
 #		if [ "$rating" -eq 1 ]
 #		then
@@ -19,6 +19,8 @@ case "$1" in
 #		else
 #			kdialog --title pianobar --passivepopup "'$title' by '$artist' on '$album'" 10
 #		fi
+#		# show an OS X notification
+#		osascript -e "display notification \"$album\" with title \"$title\" subtitle \"$artist\""
 #		# or whatever you like...
 #		;;
 

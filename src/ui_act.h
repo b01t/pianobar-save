@@ -21,8 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_UI_ACT_H_1FEFTC06
-#define SRC_UI_ACT_H_1FEFTC06
+#pragma once
 
 #include <piano.h>
 
@@ -61,5 +60,5 @@ BarUiActCallback(BarUiActVolDown);
 BarUiActCallback(BarUiActVolUp);
 BarUiActCallback(BarUiActManageStation);
 BarUiActCallback(BarUiActVolReset);
+BarUiActCallback(BarUiActSettings);
 
-#endif /* SRC_UI_ACT_H_1FEFTC06 */

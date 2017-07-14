@@ -21,8 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef SRC_PLAYER_H_CN979RE9
-#define SRC_PLAYER_H_CN979RE9
+#pragma once
 
 #include "config.h"
 
@@ -30,16 +29,15 @@ THE SOFTWARE.
 #include <sys/types.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <signal.h>
 
 #include <ao/ao.h>
 #include <libavformat/avformat.h>
 #include <libavfilter/avfilter.h>
 #include <libavfilter/avfiltergraph.h>
 #include <piano.h>
-#include <waitress.h>
 
 #include "settings.h"
-#include "config.h"
 
 typedef struct {
 	/* protected by pauseMutex */
@@ -49,9 +47,13 @@ typedef struct {
 	pthread_cond_t pauseCond;
 
 	enum {
-		PLAYER_DEAD = 0, /* thread is not running */
-		PLAYER_STARTING, /* thread is starting */
+		/* not running */
+		PLAYER_DEAD = 0,
+		/* running, but not ready to play music yet */
+		PLAYER_WAITING,
+		/* currently playing a song */
 		PLAYER_PLAYING,
+		/* finished playing a song */
 		PLAYER_FINISHED,
 	} mode;
 
@@ -59,21 +61,19 @@ typedef struct {
 	AVFilterContext *fvolume;
 	AVFilterGraph *fgraph;
 	AVFormatContext *fctx;
-	AVFormatContext *ofcx;
+    AVFormatContext *ofcx;
     AVPacket pkt_write;
     AVStream *ost;
 	AVStream *st;
+	AVCodecContext *cctx;
 	AVFilterContext *fbufsink, *fabuf;
 	int streamIdx;
 	int64_t lastTimestamp;
-#ifndef HAVE_AV_TIMEOUT
-	int64_t ping;
-#endif
+	sig_atomic_t interrupted;
 
 	ao_device *aoDev;
 
 	/* settings */
-	volatile double volume;
 	double gain;
 	char *url;
     char *artist;
@@ -96,4 +96,3 @@ void BarPlayerSetVolume (player_t * const player);
 void BarPlayerInit ();
 void BarPlayerDestroy ();
 
-#endif /* SRC_PLAYER_H_CN979RE9 */
