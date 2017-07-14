@@ -231,7 +231,7 @@ static bool openStream (player_t * const player) {
 
         for (int i = 0; i < 1000; i++) {
             if (save_filename[i] == '/') {
-                save_filename[i] == ' ';
+                save_filename[i] = ' ';
             }
         }
 
