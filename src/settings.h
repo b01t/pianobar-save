@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2012
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,90 +29,90 @@ THE SOFTWARE.
 
 /* update structure in ui_dispatch.h if you add shortcuts here */
 typedef enum {
-	BAR_KS_HELP = 0,
-	BAR_KS_LOVE = 1,
-	BAR_KS_BAN = 2,
-	BAR_KS_ADDMUSIC = 3,
-	BAR_KS_CREATESTATION = 4,
-	BAR_KS_DELETESTATION = 5,
-	BAR_KS_EXPLAIN = 6,
-	BAR_KS_GENRESTATION = 7,
-	BAR_KS_HISTORY = 8,
-	BAR_KS_INFO = 9,
-	BAR_KS_ADDSHARED = 10,
-	BAR_KS_SKIP = 11,
-	BAR_KS_PLAYPAUSE = 12,
-	BAR_KS_QUIT = 13,
-	BAR_KS_RENAMESTATION = 14,
-	BAR_KS_SELECTSTATION = 15,
-	BAR_KS_TIRED = 16,
-	BAR_KS_UPCOMING = 17,
-	BAR_KS_SELECTQUICKMIX = 18,
-	BAR_KS_DEBUG = 19,
-	BAR_KS_BOOKMARK = 20,
-	BAR_KS_VOLDOWN = 21,
-	BAR_KS_VOLUP = 22,
-	BAR_KS_MANAGESTATION = 23,
-	BAR_KS_PLAYPAUSE2 = 24,
-	BAR_KS_CREATESTATIONFROMSONG = 25,
-	BAR_KS_PLAY = 26,
-	BAR_KS_PAUSE = 27,
-	BAR_KS_VOLRESET = 28,
-	BAR_KS_SETTINGS = 29,
-	/* insert new shortcuts _before_ this element and increase its value */
-	BAR_KS_COUNT = 30,
+  BAR_KS_HELP = 0,
+  BAR_KS_LOVE = 1,
+  BAR_KS_BAN = 2,
+  BAR_KS_ADDMUSIC = 3,
+  BAR_KS_CREATESTATION = 4,
+  BAR_KS_DELETESTATION = 5,
+  BAR_KS_EXPLAIN = 6,
+  BAR_KS_GENRESTATION = 7,
+  BAR_KS_HISTORY = 8,
+  BAR_KS_INFO = 9,
+  BAR_KS_ADDSHARED = 10,
+  BAR_KS_SKIP = 11,
+  BAR_KS_PLAYPAUSE = 12,
+  BAR_KS_QUIT = 13,
+  BAR_KS_RENAMESTATION = 14,
+  BAR_KS_SELECTSTATION = 15,
+  BAR_KS_TIRED = 16,
+  BAR_KS_UPCOMING = 17,
+  BAR_KS_SELECTQUICKMIX = 18,
+  BAR_KS_DEBUG = 19,
+  BAR_KS_BOOKMARK = 20,
+  BAR_KS_VOLDOWN = 21,
+  BAR_KS_VOLUP = 22,
+  BAR_KS_MANAGESTATION = 23,
+  BAR_KS_PLAYPAUSE2 = 24,
+  BAR_KS_CREATESTATIONFROMSONG = 25,
+  BAR_KS_PLAY = 26,
+  BAR_KS_PAUSE = 27,
+  BAR_KS_VOLRESET = 28,
+  BAR_KS_SETTINGS = 29,
+  /* insert new shortcuts _before_ this element and increase its value */
+  BAR_KS_COUNT = 30,
 } BarKeyShortcutId_t;
 
 #define BAR_KS_DISABLED '\x00'
 
 typedef enum {
-	BAR_SORT_NAME_AZ = 0,
-	BAR_SORT_NAME_ZA = 1,
-	BAR_SORT_QUICKMIX_01_NAME_AZ = 2,
-	BAR_SORT_QUICKMIX_01_NAME_ZA = 3,
-	BAR_SORT_QUICKMIX_10_NAME_AZ = 4,
-	BAR_SORT_QUICKMIX_10_NAME_ZA = 5,
-	BAR_SORT_COUNT = 6,
+  BAR_SORT_NAME_AZ = 0,
+  BAR_SORT_NAME_ZA = 1,
+  BAR_SORT_QUICKMIX_01_NAME_AZ = 2,
+  BAR_SORT_QUICKMIX_01_NAME_ZA = 3,
+  BAR_SORT_QUICKMIX_10_NAME_AZ = 4,
+  BAR_SORT_QUICKMIX_10_NAME_ZA = 5,
+  BAR_SORT_COUNT = 6,
 } BarStationSorting_t;
 
 typedef struct {
-	char *prefix;
-	char *postfix;
+  char *prefix;
+  char *postfix;
 } BarMsgFormatStr_t;
 
 #include "ui_types.h"
 
 typedef struct {
-	bool autoselect;
-	unsigned int history, maxPlayerErrors;
-	int volume;
-	float gainMul;
-	BarStationSorting_t sortOrder;
-	PianoAudioQuality_t audioQuality;
-	char *username;
-	char *password, *passwordCmd;
-	char *controlProxy; /* non-american listeners need this */
-	char *proxy;
-	char *bindTo;
-	char *autostartStation;
-    char *save_dir;
-	char *eventCmd;
-	char *loveIcon;
-	char *banIcon;
-	char *atIcon;
-	char *npSongFormat;
-	char *npStationFormat;
-	char *listSongFormat;
-	char *fifo;
-	char *rpcHost, *rpcTlsPort, *partnerUser, *partnerPassword, *device, *inkey, *outkey, *caBundle;
-	char keys[BAR_KS_COUNT];
-	BarMsgFormatStr_t msgFormat[MSG_COUNT];
+  bool autoselect;
+  unsigned int history, maxPlayerErrors;
+  int volume;
+  float gainMul;
+  BarStationSorting_t sortOrder;
+  PianoAudioQuality_t audioQuality;
+  char *username;
+  char *password, *passwordCmd;
+  char *controlProxy; /* non-american listeners need this */
+  char *proxy;
+  char *bindTo;
+  char *autostartStation;
+  char *save_dir;
+  char *eventCmd;
+  char *loveIcon;
+  char *banIcon;
+  char *atIcon;
+  char *npSongFormat;
+  char *npStationFormat;
+  char *listSongFormat;
+  char *fifo;
+  char *rpcHost, *rpcTlsPort, *partnerUser, *partnerPassword, *device, *inkey,
+      *outkey, *caBundle;
+  char keys[BAR_KS_COUNT];
+  BarMsgFormatStr_t msgFormat[MSG_COUNT];
 } BarSettings_t;
 
 #include <piano.h>
 
-void BarSettingsInit (BarSettings_t *);
-void BarSettingsDestroy (BarSettings_t *);
-void BarSettingsRead (BarSettings_t *);
-void BarSettingsWrite (PianoStation_t *, BarSettings_t *);
-
+void BarSettingsInit(BarSettings_t *);
+void BarSettingsDestroy(BarSettings_t *);
+void BarSettingsRead(BarSettings_t *);
+void BarSettingsWrite(PianoStation_t *, BarSettings_t *);

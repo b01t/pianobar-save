@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2014
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "terminal.h"
 
@@ -33,26 +33,21 @@ THE SOFTWARE.
  * handler */
 static struct termios restore;
 
-/*	init terminal attributes when continuing, assuming the shell modified them;
- *	tcget/setattr and signal are async signal safe */
-static void BarTermHandleCont (int sig) {
-	BarTermInit ();
+/*	init terminal attributes when continuing, assuming the shell modified
+ *them; tcget/setattr and signal are async signal safe */
+static void BarTermHandleCont(int sig) { BarTermInit(); }
+
+void BarTermInit() {
+  struct termios newopt;
+
+  tcgetattr(STDIN_FILENO, &restore);
+  memcpy(&newopt, &restore, sizeof(newopt));
+
+  /* disable echoing and line buffer */
+  newopt.c_lflag &= ~(ECHO | ICANON);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newopt);
+
+  signal(SIGCONT, BarTermHandleCont);
 }
 
-void BarTermInit () {
-	struct termios newopt;
-
-	tcgetattr (STDIN_FILENO, &restore);
-	memcpy (&newopt, &restore, sizeof (newopt));
-
-	/* disable echoing and line buffer */
-	newopt.c_lflag &= ~(ECHO | ICANON);
-	tcsetattr (STDIN_FILENO, TCSANOW, &newopt);
-
-	signal (SIGCONT, BarTermHandleCont);
-}
-
-void BarTermRestore () {
-	tcsetattr (STDIN_FILENO, TCSANOW, &restore);
-}
-
+void BarTermRestore() { tcsetattr(STDIN_FILENO, TCSANOW, &restore); }

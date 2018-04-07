@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2011
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,21 +32,20 @@ THE SOFTWARE.
 #include "ui_readline.h"
 
 typedef struct {
-	PianoHandle_t ph;
-	CURL *http;
-	player_t player;
-	BarSettings_t settings;
-	/* first item is current song */
-	PianoSong_t *playlist;
-	PianoSong_t *songHistory;
-	/* station of current song and station used to fetch songs from if playlist
-	 * is empty */
-	PianoStation_t *curStation, *nextStation;
-	sig_atomic_t doQuit;
-	BarReadlineFds_t input;
-	unsigned int playerErrors;
+  PianoHandle_t ph;
+  CURL *http;
+  player_t player;
+  BarSettings_t settings;
+  /* first item is current song */
+  PianoSong_t *playlist;
+  PianoSong_t *songHistory;
+  /* station of current song and station used to fetch songs from if playlist
+   * is empty */
+  PianoStation_t *curStation, *nextStation;
+  sig_atomic_t doQuit;
+  BarReadlineFds_t input;
+  unsigned int playerErrors;
 } BarApp_t;
 
 #include <signal.h>
 extern sig_atomic_t *interrupted;
-

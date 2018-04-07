@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2014
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,73 +26,72 @@ THE SOFTWARE.
 #include "config.h"
 
 /* required for freebsd */
-#include <sys/types.h>
 #include <pthread.h>
-#include <stdint.h>
 #include <signal.h>
+#include <stdint.h>
+#include <sys/types.h>
 
 #include <ao/ao.h>
-#include <libavformat/avformat.h>
 #include <libavfilter/avfilter.h>
 #include <libavfilter/avfiltergraph.h>
+#include <libavformat/avformat.h>
 #include <piano.h>
 
 #include "settings.h"
 
 typedef struct {
-	/* protected by pauseMutex */
-	volatile bool doQuit;
-	volatile bool doPause;
-	pthread_mutex_t pauseMutex;
-	pthread_cond_t pauseCond;
+  /* protected by pauseMutex */
+  volatile bool doQuit;
+  volatile bool doPause;
+  pthread_mutex_t pauseMutex;
+  pthread_cond_t pauseCond;
 
-	enum {
-		/* not running */
-		PLAYER_DEAD = 0,
-		/* running, but not ready to play music yet */
-		PLAYER_WAITING,
-		/* currently playing a song */
-		PLAYER_PLAYING,
-		/* finished playing a song */
-		PLAYER_FINISHED,
-	} mode;
+  enum {
+    /* not running */
+    PLAYER_DEAD = 0,
+    /* running, but not ready to play music yet */
+    PLAYER_WAITING,
+    /* currently playing a song */
+    PLAYER_PLAYING,
+    /* finished playing a song */
+    PLAYER_FINISHED,
+  } mode;
 
-	/* libav */
-	AVFilterContext *fvolume;
-	AVFilterGraph *fgraph;
-	AVFormatContext *fctx;
-    AVFormatContext *ofcx;
-    AVPacket pkt_write;
-    AVStream *ost;
-	AVStream *st;
-	AVCodecContext *cctx;
-	AVFilterContext *fbufsink, *fabuf;
-	int streamIdx;
-	int64_t lastTimestamp;
-	sig_atomic_t interrupted;
+  /* libav */
+  AVFilterContext *fvolume;
+  AVFilterGraph *fgraph;
+  AVFormatContext *fctx;
+  AVFormatContext *ofcx;
+  AVPacket pkt_write;
+  AVStream *ost;
+  AVStream *st;
+  AVCodecContext *cctx;
+  AVFilterContext *fbufsink, *fabuf;
+  int streamIdx;
+  int64_t lastTimestamp;
+  sig_atomic_t interrupted;
 
-	ao_device *aoDev;
+  ao_device *aoDev;
 
-	/* settings */
-	double gain;
-	char *url;
-    char *artist;
-    char *title;
-    char *station;
-    bool save_file;
-    char tmp_filename [1000];
-    char save_complete[1000];
-	const BarSettings_t *settings;
+  /* settings */
+  double gain;
+  char *url;
+  char *artist;
+  char *title;
+  char *station;
+  bool save_file;
+  char tmp_filename[1000];
+  char save_complete[1000];
+  const BarSettings_t *settings;
 
-	/* measured in seconds */
-	volatile unsigned int songDuration;
-	volatile unsigned int songPlayed;
+  /* measured in seconds */
+  volatile unsigned int songDuration;
+  volatile unsigned int songPlayed;
 } player_t;
 
-enum {PLAYER_RET_OK = 0, PLAYER_RET_HARDFAIL = 1, PLAYER_RET_SOFTFAIL = 2};
+enum { PLAYER_RET_OK = 0, PLAYER_RET_HARDFAIL = 1, PLAYER_RET_SOFTFAIL = 2 };
 
-void *BarPlayerThread (void *data);
-void BarPlayerSetVolume (player_t * const player);
-void BarPlayerInit ();
-void BarPlayerDestroy ();
-
+void *BarPlayerThread(void *data);
+void BarPlayerSetVolume(player_t *const player);
+void BarPlayerInit();
+void BarPlayerDestroy();

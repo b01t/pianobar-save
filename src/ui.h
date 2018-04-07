@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2011
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,30 @@ THE SOFTWARE.
 
 #include <piano.h>
 
-#include "settings.h"
-#include "player.h"
 #include "main.h"
+#include "player.h"
+#include "settings.h"
 #include "ui_readline.h"
 #include "ui_types.h"
 
-typedef void (*BarUiSelectStationCallback_t) (BarApp_t *app, char *buf);
+typedef void (*BarUiSelectStationCallback_t)(BarApp_t *app, char *buf);
 
-void BarUiMsg (const BarSettings_t *, const BarUiMsg_t, const char *, ...) __attribute__((format(printf, 3, 4)));
-PianoStation_t *BarUiSelectStation (BarApp_t *, PianoStation_t *, const char *,
-		BarUiSelectStationCallback_t, bool);
-PianoSong_t *BarUiSelectSong (const BarSettings_t *, PianoSong_t *,
-		BarReadlineFds_t *);
-PianoArtist_t *BarUiSelectArtist (BarApp_t *, PianoArtist_t *);
-char *BarUiSelectMusicId (BarApp_t *, PianoStation_t *, const char *);
-void BarUiPrintStation (const BarSettings_t *, PianoStation_t *);
-void BarUiPrintSong (const BarSettings_t *, const PianoSong_t *, 
-		const PianoStation_t *);
-size_t BarUiListSongs (const BarSettings_t *, const PianoSong_t *, const char *);
-void BarUiStartEventCmd (const BarSettings_t *, const char *,
-		const PianoStation_t *, const PianoSong_t *, const player_t *,
-		PianoStation_t *, PianoReturn_t, CURLcode);
-bool BarUiPianoCall (BarApp_t * const, const PianoRequestType_t,
-		void *, PianoReturn_t *, CURLcode *);
-void BarUiHistoryPrepend (BarApp_t *app, PianoSong_t *song);
-
+void BarUiMsg(const BarSettings_t *, const BarUiMsg_t, const char *, ...)
+    __attribute__((format(printf, 3, 4)));
+PianoStation_t *BarUiSelectStation(BarApp_t *, PianoStation_t *, const char *,
+                                   BarUiSelectStationCallback_t, bool);
+PianoSong_t *BarUiSelectSong(const BarSettings_t *, PianoSong_t *,
+                             BarReadlineFds_t *);
+PianoArtist_t *BarUiSelectArtist(BarApp_t *, PianoArtist_t *);
+char *BarUiSelectMusicId(BarApp_t *, PianoStation_t *, const char *);
+void BarUiPrintStation(const BarSettings_t *, PianoStation_t *);
+void BarUiPrintSong(const BarSettings_t *, const PianoSong_t *,
+                    const PianoStation_t *);
+size_t BarUiListSongs(const BarSettings_t *, const PianoSong_t *, const char *);
+void BarUiStartEventCmd(const BarSettings_t *, const char *,
+                        const PianoStation_t *, const PianoSong_t *,
+                        const player_t *, PianoStation_t *, PianoReturn_t,
+                        CURLcode);
+bool BarUiPianoCall(BarApp_t *const, const PianoRequestType_t, void *,
+                    PianoReturn_t *, CURLcode *);
+void BarUiHistoryPrepend(BarApp_t *app, PianoSong_t *song);

@@ -14,8 +14,6 @@
 #include <libavfilter/version.h>
 
 /* does graph_send_command exist (ffmpeg >=2.2) */
-#if LIBAVFILTER_VERSION_MAJOR >= 4 && \
-		LIBAVFILTER_VERSION_MICRO >= 100
+#if LIBAVFILTER_VERSION_MAJOR >= 4 && LIBAVFILTER_VERSION_MICRO >= 100
 #define HAVE_AVFILTER_GRAPH_SEND_COMMAND
 #endif
-

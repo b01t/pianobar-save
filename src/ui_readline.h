@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2011
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,22 +28,21 @@ THE SOFTWARE.
 
 /* bitfield */
 typedef enum {
-	BAR_RL_DEFAULT = 0,
-	BAR_RL_FULLRETURN = 1, /* return if buffer is full */
-	BAR_RL_NOECHO = 2, /* don't echo to stdout */
-	BAR_RL_NOINT = 4, /* don’t change interrupted variable */
+  BAR_RL_DEFAULT = 0,
+  BAR_RL_FULLRETURN = 1, /* return if buffer is full */
+  BAR_RL_NOECHO = 2,     /* don't echo to stdout */
+  BAR_RL_NOINT = 4,      /* don’t change interrupted variable */
 } BarReadlineFlags_t;
 
 typedef struct {
-	fd_set set;
-	int maxfd;
-	int fds[2];
+  fd_set set;
+  int maxfd;
+  int fds[2];
 } BarReadlineFds_t;
 
-size_t BarReadline (char *, const size_t, const char *,
-		BarReadlineFds_t *, const BarReadlineFlags_t, int);
-size_t BarReadlineStr (char *, const size_t,
-		BarReadlineFds_t *, const BarReadlineFlags_t);
-size_t BarReadlineInt (int *, BarReadlineFds_t *);
-bool BarReadlineYesNo (bool, BarReadlineFds_t *);
-
+size_t BarReadline(char *, const size_t, const char *, BarReadlineFds_t *,
+                   const BarReadlineFlags_t, int);
+size_t BarReadlineStr(char *, const size_t, BarReadlineFds_t *,
+                      const BarReadlineFlags_t);
+size_t BarReadlineInt(int *, BarReadlineFds_t *);
+bool BarReadlineYesNo(bool, BarReadlineFds_t *);

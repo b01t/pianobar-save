@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2011
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,14 @@ THE SOFTWARE.
 #define SRC_UI_TYPES_H_2HR75RII
 
 typedef enum {
-	MSG_NONE = 0,
-	MSG_INFO = 1,
-	MSG_PLAYING = 2,
-	MSG_TIME = 3,
-	MSG_ERR = 4,
-	MSG_QUESTION = 5,
-	MSG_LIST = 6,
-	MSG_COUNT = 7, /* invalid type */
+  MSG_NONE = 0,
+  MSG_INFO = 1,
+  MSG_PLAYING = 2,
+  MSG_TIME = 3,
+  MSG_ERR = 4,
+  MSG_QUESTION = 5,
+  MSG_LIST = 6,
+  MSG_COUNT = 7, /* invalid type */
 } BarUiMsg_t;
 
 #endif /* SRC_UI_TYPES_H_2HR75RII */

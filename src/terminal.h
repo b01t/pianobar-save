@@ -1,6 +1,6 @@
 /*
 Copyright (c) 2008-2010
-	Lars-Dominik Braun <lars@6xq.net>
+        Lars-Dominik Braun <lars@6xq.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,5 @@ THE SOFTWARE.
 
 #pragma once
 
-void BarTermInit ();
-void BarTermRestore ();
-
+void BarTermInit();
+void BarTermRestore();
