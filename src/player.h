@@ -77,6 +77,7 @@ typedef struct {
     double gain;
     char *url;
     char *artist;
+    char *album;
     char *title;
     char *album_art;
     char *station;
