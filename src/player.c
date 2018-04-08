@@ -228,7 +228,7 @@ static bool openStream(player_t *const player) {
         char artist[100], album[100];
         int offset = 0;
         for (i = 0; i < strlen(player->artist); ++i) {
-            if (player->artist[i] == '\'') {
+            if (player->artist[i] == '"') {
                 artist[i + offset] = '\\';
                 artist[i + offset + 1] = player->artist[i];
                 ++offset;
@@ -242,7 +242,7 @@ static bool openStream(player_t *const player) {
 
         offset = 0;
         for (i = 0; i < strlen(player->album); ++i) {
-            if (player->album[i] == '\'') {
+            if (player->album[i] == '"') {
                 album[i + offset] = '\\';
                 album[i + offset + 1] = player->album[i];
                 ++offset;
@@ -259,7 +259,7 @@ static bool openStream(player_t *const player) {
         struct stat st = {0};
         if (stat(save_path, &st) == -1) {
             char buf[1000];
-            sprintf(buf, "mkdir -p '%s'", save_path);
+            sprintf(buf, "mkdir -p \"%s\"", save_path);
             system(buf);
         }
 
@@ -597,8 +597,50 @@ void *BarPlayerThread(void *data) {
         tmpmp3[strlen(tmpmp3) - 2] = 'p';
         tmpmp3[strlen(tmpmp3) - 1] = '3';
 
-        sprintf(cmd,
-                "ffmpeg -i '%s' -c:a libmp3lame -ac 2 -q:a 2 '%s' >>/dev/null",
+        char artist[100], album[100], title[100];
+        int offset = 0, i;
+        for (i = 0; i < strlen(player->artist); ++i) {
+            if (player->artist[i] == '"') {
+                artist[i + offset] = '\\';
+                artist[i + offset + 1] = player->artist[i];
+                ++offset;
+            } else if (player->artist[i] == '/') {
+                artist[i + offset] = ' ';
+            } else {
+                artist[i + offset] = player->artist[i];
+            }
+        }
+        artist[i + offset] = '\0';
+
+        offset = 0;
+        for (i = 0; i < strlen(player->album); ++i) {
+            if (player->album[i] == '"') {
+                album[i + offset] = '\\';
+                album[i + offset + 1] = player->album[i];
+                ++offset;
+            } else if (player->album[i] == '/') {
+                album[i + offset] = ' ';
+            } else {
+                album[i + offset] = player->album[i];
+            }
+        }
+        album[i + offset] = '\0';
+        offset = 0;
+
+        for (i = 0; i < strlen(player->title); ++i) {
+            if (player->title[i] == '"') {
+                title[i + offset] = '\\';
+                title[i + offset + 1] = player->title[i];
+                ++offset;
+            } else if (player->title[i] == '/') {
+                title[i + offset] = ' ';
+            } else {
+                title[i + offset] = player->title[i];
+            }
+        }
+        title[i + offset] = '\0';
+
+        sprintf(cmd, "ffmpeg -i \"%s\" -c:a libmp3lame -ac 2 -q:a 2 \"%s\"",
                 player->tmp_filename, tmpmp3);
         system(cmd);
 
@@ -606,8 +648,8 @@ void *BarPlayerThread(void *data) {
             cmd,
             "lame  --vbr-new --preset standard --tt \"%s\" --ta \"%s\" --tl "
             "\"%s\" --add-id3v2 \"%s\" \"%s\"",
-            player->title, player->artist, player->album, tmpmp3,
-            player->save_complete);
+            player->title, artist, album, tmpmp3, player->save_complete);
+        printf("%s\n", cmd);
         system(cmd);
     }
 
