@@ -226,14 +226,33 @@ static bool openStream(player_t *const player) {
         }
 
         char artist[100], album[100];
-        strcpy(artist, player->artist);
-        strcpy(album, player->album);
-
-        for (int i = 0; i < 100; ++i) {
-            if (artist[i] == '/') artist[i] = ' ';
-
-            if (album[i] == '/') album[i] = ' ';
+        int offset = 0;
+        for (i = 0; i < strlen(player->artist); ++i) {
+            if (player->artist[i] == '\'') {
+                artist[i + offset] = '\\';
+                artist[i + offset + 1] = player->artist[i];
+                ++offset;
+            } else if (player->artist[i] == '/') {
+                artist[i + offset] = ' ';
+            } else {
+                artist[i + offset] = player->artist[i];
+            }
         }
+        artist[i + offset] = '\0';
+
+        offset = 0;
+        for (i = 0; i < strlen(player->album); ++i) {
+            if (player->album[i] == '\'') {
+                album[i + offset] = '\\';
+                album[i + offset + 1] = player->album[i];
+                ++offset;
+            } else if (player->album[i] == '/') {
+                album[i + offset] = ' ';
+            } else {
+                album[i + offset] = player->album[i];
+            }
+        }
+        album[i + offset] = '\0';
 
         sprintf(save_path, "%s%s/%s/", save_path, artist, album);
 
@@ -278,6 +297,11 @@ static bool openStream(player_t *const player) {
         fclose(file);
 
         sprintf(save_complete, "%s%s", save_path, save_filename);
+
+        save_complete[strlen(save_complete) - 3] = 'm';
+        save_complete[strlen(save_complete) - 2] = 'p';
+        save_complete[strlen(save_complete) - 1] = '3';
+
         strcpy(player->save_complete, save_complete);
 
         if (access(save_complete, F_OK) != -1) {
@@ -562,13 +586,29 @@ void *BarPlayerThread(void *data) {
     player->mode = PLAYER_FINISHED;
 
     if (player->save_file && !player->doQuit) {
-        char *buffer[2000];
         av_write_trailer(player->ofcx);
         avformat_free_context(player->ofcx);
         avio_close(player->ofcx->pb);
-        sprintf(buffer, "mv \"%s\" \"%s\"", player->tmp_filename,
-                player->save_complete);
-        system(buffer);
+
+        char cmd[2000], tmpmp3[1000];
+
+        strcpy(tmpmp3, player->tmp_filename);
+        tmpmp3[strlen(tmpmp3) - 3] = 'm';
+        tmpmp3[strlen(tmpmp3) - 2] = 'p';
+        tmpmp3[strlen(tmpmp3) - 1] = '3';
+
+        sprintf(cmd,
+                "ffmpeg -i '%s' -c:a libmp3lame -ac 2 -q:a 2 '%s' >>/dev/null",
+                player->tmp_filename, tmpmp3);
+        system(cmd);
+
+        sprintf(
+            cmd,
+            "lame  --vbr-new --preset standard --tt \"%s\" --ta \"%s\" --tl "
+            "\"%s\" --add-id3v2 \"%s\" \"%s\"",
+            player->title, player->artist, player->album, tmpmp3,
+            player->save_complete);
+        system(cmd);
     }
 
     return (void *)pret;
